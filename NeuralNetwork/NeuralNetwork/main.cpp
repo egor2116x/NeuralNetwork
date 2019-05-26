@@ -64,13 +64,14 @@ void Recognize(std::vector<Neuron> & net, const std::vector<double> & signal)
         net[i].inputs = signal;
         net[i].Summarize();
         net[i].Normalize(Sigmoid);
-        const double error = net[i].GetError(Arctan, 1);
+        const double error = net[i].GetError(MSE, 1);
         if (!error && (1 - net[i].output < 0.1))
         {
             std::cout << "Recognized number is " << i + 1 << std::endl;
-            break;
+            return;
         }
     }
+    std::cout << "No recognized any number" << std::endl;
 }
 
 int main()
@@ -88,6 +89,14 @@ int main()
         { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
         { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
         { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+    };
+
+    const std::vector<std::vector<double>> TestSignals = {
+        { 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0 }, //1
+        { 1.0, 1.0, 1.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 1.0 }, //2
+        { 1.0, 1.0, 1.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0 }, //3
+        { 1.0, 0.0, 1.0, 1.0, 0.0, 1.0, 1.0, 1.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0 }, //4
+        { 1.0, 1.0, 1.0, 1.0, 0.0, 0.0, 1.0, 1.0, 1.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0 }, //5
     };
 
     // defines
@@ -116,7 +125,7 @@ int main()
     // trying to find out
     for (size_t i = 0; i < net.size(); i++)
     {
-        Recognize(net, signals[i]);
+        Recognize(net, TestSignals[i]);
     }
     
     std::cin.get();
