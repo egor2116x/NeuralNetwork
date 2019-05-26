@@ -2,74 +2,124 @@
 
 #include "stdafx.h"
 #include "Common.h"
-#include "NeuralNetwork.h"
 
+struct Neuron
+{
+    Neuron() : output(0) {}
+    std::vector<double> inputs;
+    std::vector<double> weights;
+    double              output;
+    double              weightStep;
+    void Normalize(void(*func)(double & x))
+    {
+        func(output);
+    }
+    void Summarize()
+    {
+        output = 0.0;
+        for (size_t i = 0; i < inputs.size(); i++)
+        {
+            output += inputs[i] * weights[i];
+        }
+    }
+    void Lern()
+    {
+        for (size_t i = 0; i < weights.size(); i++)
+        {
+            if (inputs[i] > 0)
+            {
+                weights[i] += weightStep;
+            }
+        }
+    }
+    double GetError(double(*func)(double rightAnswer, double outputSignal), double rightAnswer)
+    {
+        return func(rightAnswer, output);
+    }
+};
+
+void Study(std::vector<Neuron> & net, const size_t epoch)
+{
+    for (size_t i = 0; i < epoch; i++)
+    {
+        std::cout << "EPOCH = " << i << std::endl;
+        for (size_t j = 0; j < net.size(); j++)
+        {
+            net[j].Summarize();
+            net[j].Normalize(Sigmoid);
+            net[j].Lern();
+            std::cout << "Neuron #" << j
+                << std::fixed << std::setprecision(2)
+                << " Output = " << net[j].output
+                << " Error = " << net[j].GetError(MSE, 1) << std::endl;
+        }
+        std::cout << std::endl;
+    }
+}
+
+void Recognize(std::vector<Neuron> & net, const std::vector<double> & signal)
+{
+    for (size_t i = 0; i < net.size(); i++)
+    {
+        net[i].inputs = signal;
+        net[i].Summarize();
+        net[i].Normalize(Sigmoid);
+        const double error = net[i].GetError(Arctan, 1);
+        if (!error && (1 - net[i].output < 0.1))
+        {
+            std::cout << "Recognized number is " << i + 1 << std::endl;
+            break;
+        }
+    }
+}
 
 int main()
 {
-    const std::vector<std::string> inputData = {
-        "001011001001001", //1
-        "111101010100111", //2
-        "111001011001111", //3
-        "101101111001001", //4
-        "111100111001111", //5
-        "111100111101111", //6
-        "111001001001001", //7
-        "111101111101111", //8
-        "111101111001111", //9
-        "111101101101111", //0
-    };
-
     const std::vector<std::vector<double>> signals = {
         { 0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0 }, //1
         { 1.0, 1.0, 1.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 1.0 }, //2
-        { 1.0, 1.0, 1.0, 0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0 }, //3
+        { 1.0, 1.0, 1.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0 }, //3
+        { 1.0, 0.0, 1.0, 1.0, 0.0, 1.0, 1.0, 1.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0 }, //4
+        { 1.0, 1.0, 1.0, 1.0, 0.0, 0.0, 1.0, 1.0, 1.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0 }, //5
     };
     const std::vector<std::vector<double>> weights = {
-        { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 },
+        { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+        { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+        { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
         { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
         { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
     };
 
-    std::vector<Neuron*> first;
-    std::vector<Neuron*> second;
-    std::vector<Neuron*> thirt;
-    std::vector<double> tmpSignals;
-    std::vector<double> tmpWeights;
-    for (size_t i = 0; i < signals[0].size(); i++)
+    // defines
+    const size_t EPOCH_MAX = 4;
+    const double WEIGHT_STEP = 0.1;
+    const double ERROR_LIMIT = 0.2;
+
+    std::vector<Neuron> net;
+    net.push_back(Neuron());
+    net.push_back(Neuron());
+    net.push_back(Neuron());
+    net.push_back(Neuron());
+    net.push_back(Neuron());
+
+    // init
+    for (size_t i = 0; i < net.size(); i++)
     {
-        tmpSignals.push_back(signals[0][i]);
-        tmpWeights.push_back(weights[0][i]);
-        first.push_back(new Neuron(tmpSignals, tmpWeights, 0.23, LinearFunction));
-        second.push_back(new Neuron(std::vector<double>(), weights[0], 0.23, Sigmoid));
-        thirt.push_back(new Neuron(std::vector<double>(), weights[0], 0.23, Sigmoid));
-        tmpSignals.clear();
-        tmpWeights.clear();
+        net[i].inputs = signals[i];
+        net[i].weights = weights[i];
+        net[i].weightStep = WEIGHT_STEP;
     }
 
-    std::vector<Layer*> tmpLayers;
-    tmpLayers.push_back(new Layer(first));
-    tmpLayers.push_back(new Layer(second));
-    tmpLayers.push_back(new Layer(thirt));
+    // learning
+    Study(net, EPOCH_MAX);
 
-    double rightAnswer = 1;
-    NeuralNetwork network(tmpLayers, rightAnswer, MSE);
-
-    try
+    // trying to find out
+    for (size_t i = 0; i < net.size(); i++)
     {
-        for (size_t i = 0; i < 100; i++)
-        {
-            network.Calculate();
-            const auto error = network.GetError();
-            const auto & answer = network.GetOutputSignals();
-            network.ChangeWeights();
-        }
+        Recognize(net, signals[i]);
     }
-    catch (const std::logic_error & e)
-    {
-        std::cout << e.what() << std::endl;
-    }
-
+    
+    std::cin.get();
     return 0;
 }
 
